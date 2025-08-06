@@ -1,0 +1,206 @@
+<!-- Website 1: E-commerce Store -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TechShop - Best Electronics Store</title>
+    <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    <!-- SAME Widget ID on different website -->
+    <script src="./main.js" id="authkey-chat-widget" widget-id="7c220169-6103-46d9-a0ea-3a1e899128d1" defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .site-header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+        }
+        
+        .nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 18px;
+            padding: 12px 24px;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+        }
+        
+        .nav a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav a.active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .page-content {
+            line-height: 1.6;
+            color: #555;
+            font-size: 18px;
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .product-card {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .widget-info {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="site-header">
+            <h1>🛒 TechShop Electronics</h1>
+            <p>Your Ultimate Electronics Destination</p>
+            <div class="widget-info">
+                <strong>Website:</strong> TechShop E-commerce Store<br>
+                <strong>Widget ID:</strong> 7c220169-6103-46d9-a0ea-3a1e899128d1<br>
+                <strong>URL:</strong> localhost:3001/ecommerce-site.html
+            </div>
+        </div>
+        
+        <nav class="nav">
+            <ul>
+                <li><a href="ecommerce-site.html" class="active" onclick="trackEvent('navigation_click', 'home')">Home</a></li>
+                <li><a href="ecommerce-products.html" onclick="trackEvent('navigation_click', 'products')">Products</a></li>
+                <li><a href="ecommerce-categories.html" onclick="trackEvent('navigation_click', 'categories')">Categories</a></li>
+                <li><a href="ecommerce-deals.html" onclick="trackEvent('navigation_click', 'deals')">Deals</a></li>
+                <li><a href="ecommerce-support.html" onclick="trackEvent('navigation_click', 'support')">Support</a></li>
+                <li><a href="ecommerce-cart.html" onclick="trackEvent('navigation_click', 'cart')">Cart</a></li>
+            </ul>
+        </nav>
+        
+        <div class="content">
+            <h1>Welcome to TechShop</h1>
+            <div class="page-content">
+                <p>Discover the latest in technology! Browse our extensive collection of electronics, gadgets, and accessories.</p>
+                
+                <div class="products-grid">
+                    <div class="product-card" onclick="trackEvent('product_click', 'laptop')">
+                        <h3>💻 Laptops</h3>
+                        <p>High-performance laptops for work and gaming</p>
+                    </div>
+                    <div class="product-card" onclick="trackEvent('product_click', 'smartphone')">
+                        <h3>📱 Smartphones</h3>
+                        <p>Latest smartphones with cutting-edge features</p>
+                    </div>
+                    <div class="product-card" onclick="trackEvent('product_click', 'tablet')">
+                        <h3>📋 Tablets</h3>
+                        <p>Portable tablets for productivity and entertainment</p>
+                    </div>
+                    <div class="product-card" onclick="trackEvent('product_click', 'headphones')">
+                        <h3>🎧 Audio</h3>
+                        <p>Premium headphones and speakers</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function trackEvent(eventType, eventName) {
+            console.log(`[ECOMMERCE SITE] Tracking event: ${eventType} - ${eventName}`);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🛒 [ECOMMERCE SITE] TechShop loaded with widget ID: 7c220169-6103-46d9-a0ea-3a1e899128d1');
+            console.log('🌐 [ECOMMERCE SITE] Website URL:', window.location.href);
+            
+            // Simulate user interactions for testing
+            setTimeout(() => {
+                console.log('[ECOMMERCE SITE] Simulating user scroll...');
+                window.scrollTo(0, 100);
+            }, 2000);
+            
+            setTimeout(() => {
+                console.log('[ECOMMERCE SITE] Simulating product click...');
+                document.querySelector('.product-card').click();
+            }, 4000);
+        });
+    </script>
+</body>
+</html>

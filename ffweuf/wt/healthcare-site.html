@@ -1,0 +1,233 @@
+<!-- Website 3: Healthcare Platform -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HealthCare Plus - Medical Services</title>
+    <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    <!-- SAME Widget ID on different website -->
+    <script src="./main.js" id="authkey-chat-widget" widget-id="7c220169-6103-46d9-a0ea-3a1e899128d1" defer></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .site-header {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+        }
+        
+        .nav {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            padding: 12px 20px;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+        }
+        
+        .nav a:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .nav a.active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.6em;
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .page-content {
+            line-height: 1.6;
+            color: #555;
+            font-size: 18px;
+        }
+        
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .service-card {
+            background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .service-card:hover {
+            transform: translateY(-6px);
+        }
+        
+        .widget-info {
+            background: #d1ecf1;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #17a2b8;
+            color: #0c5460;
+        }
+        
+        .emergency-banner {
+            background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="site-header">
+            <h1>🏥 HealthCare Plus</h1>
+            <p>Your Trusted Medical Partner</p>
+            <div class="emergency-banner">
+                🚨 24/7 Emergency Services Available - Call Now!
+            </div>
+            <div class="widget-info">
+                <strong>Website:</strong> HealthCare Plus Medical Platform<br>
+                <strong>Widget ID:</strong> 7c220169-6103-46d9-a0ea-3a1e899128d1<br>
+                <strong>URL:</strong> localhost:3001/healthcare-site.html
+            </div>
+        </div>
+        
+        <nav class="nav">
+            <ul>
+                <li><a href="healthcare-site.html" class="active" onclick="trackEvent('navigation_click', 'home')">Home</a></li>
+                <li><a href="healthcare-services.html" onclick="trackEvent('navigation_click', 'services')">Services</a></li>
+                <li><a href="healthcare-doctors.html" onclick="trackEvent('navigation_click', 'doctors')">Doctors</a></li>
+                <li><a href="healthcare-appointments.html" onclick="trackEvent('navigation_click', 'appointments')">Appointments</a></li>
+                <li><a href="healthcare-pharmacy.html" onclick="trackEvent('navigation_click', 'pharmacy')">Pharmacy</a></li>
+                <li><a href="healthcare-emergency.html" onclick="trackEvent('navigation_click', 'emergency')">Emergency</a></li>
+                <li><a href="healthcare-contact.html" onclick="trackEvent('navigation_click', 'contact')">Contact</a></li>
+            </ul>
+        </nav>
+        
+        <div class="content">
+            <h1>Quality Healthcare at Your Fingertips</h1>
+            <div class="page-content">
+                <p>Experience world-class medical care with our comprehensive healthcare services. From routine check-ups to specialized treatments, we're here for you 24/7.</p>
+                
+                <div class="services-grid">
+                    <div class="service-card" onclick="trackEvent('service_click', 'consultation')">
+                        <h3>👨‍⚕️ Online Consultation</h3>
+                        <p>Connect with certified doctors from the comfort of your home</p>
+                    </div>
+                    <div class="service-card" onclick="trackEvent('service_click', 'diagnostics')">
+                        <h3>🔬 Diagnostics</h3>
+                        <p>Advanced diagnostic services with accurate results</p>
+                    </div>
+                    <div class="service-card" onclick="trackEvent('service_click', 'pharmacy')">
+                        <h3>💊 Online Pharmacy</h3>
+                        <p>Order medicines online with home delivery</p>
+                    </div>
+                    <div class="service-card" onclick="trackEvent('service_click', 'emergency')">
+                        <h3>🚑 Emergency Care</h3>
+                        <p>24/7 emergency medical services and ambulance</p>
+                    </div>
+                    <div class="service-card" onclick="trackEvent('service_click', 'specialist')">
+                        <h3>🩺 Specialist Care</h3>
+                        <p>Expert care from specialized medical professionals</p>
+                    </div>
+                    <div class="service-card" onclick="trackEvent('service_click', 'wellness')">
+                        <h3>🧘‍♀️ Wellness Programs</h3>
+                        <p>Preventive care and wellness monitoring</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function trackEvent(eventType, eventName) {
+            console.log(`[HEALTHCARE SITE] Tracking event: ${eventType} - ${eventName}`);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🏥 [HEALTHCARE SITE] HealthCare Plus loaded with widget ID: 7c220169-6103-46d9-a0ea-3a1e899128d1');
+            console.log('🌐 [HEALTHCARE SITE] Website URL:', window.location.href);
+            
+            // Simulate user interactions for testing
+            setTimeout(() => {
+                console.log('[HEALTHCARE SITE] Simulating service browse...');
+                window.scrollTo(0, 150);
+            }, 3000);
+            
+            setTimeout(() => {
+                console.log('[HEALTHCARE SITE] Simulating consultation click...');
+                document.querySelector('.service-card').click();
+            }, 6000);
+            
+            setTimeout(() => {
+                console.log('[HEALTHCARE SITE] Simulating emergency banner interaction...');
+                document.querySelector('.emergency-banner').click();
+            }, 8000);
+        });
+    </script>
+</body>
+</html>

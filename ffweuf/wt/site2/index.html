@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Site 2 - E-commerce Store</title>
+    <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    <script src="main.js" id="authkey-chat-widget" widget-id="7c220169-6103-46d9-a0ea-3a1e899128d1" defer></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.2em;
+            margin: 0;
+        }
+        
+        .products {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .product-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        }
+        
+        .product-title {
+            color: #333;
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .product-price {
+            color: #ff6b6b;
+            font-size: 1.6em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .product-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .buy-btn {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            width: 100%;
+        }
+        
+        .buy-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .site-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="site-badge">SITE 2 - PORT 9999</div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🛒 E-commerce Store</h1>
+            <p>This is Site 2 running on port 9999 - Same Widget ID for Multi-Site Testing</p>
+        </div>
+        
+        <div class="products">
+            <div class="product-card">
+                <div class="product-title">Premium Headphones</div>
+                <div class="product-price">$199.99</div>
+                <div class="product-description">High-quality wireless headphones with noise cancellation and premium sound quality.</div>
+                <button class="buy-btn">Add to Cart</button>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-title">Smart Watch</div>
+                <div class="product-price">$299.99</div>
+                <div class="product-description">Advanced fitness tracking, heart rate monitoring, and smartphone connectivity.</div>
+                <button class="buy-btn">Add to Cart</button>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-title">Laptop Stand</div>
+                <div class="product-price">$79.99</div>
+                <div class="product-description">Ergonomic adjustable laptop stand for better posture and workspace organization.</div>
+                <button class="buy-btn">Add to Cart</button>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-title">Wireless Mouse</div>
+                <div class="product-price">$49.99</div>
+                <div class="product-description">Precision wireless mouse with ergonomic design and long battery life.</div>
+                <button class="buy-btn">Add to Cart</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

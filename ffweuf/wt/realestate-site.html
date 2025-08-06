@@ -1,0 +1,271 @@
+<!-- Website 4: Real Estate Platform -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PropertyHub - Find Your Dream Home</title>
+    <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+    <!-- SAME Widget ID on different website -->
+    <script src="./main.js" id="authkey-chat-widget" widget-id="7c220169-6103-46d9-a0ea-3a1e899128d1" defer></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .site-header {
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+        }
+        
+        .nav {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            padding: 12px 18px;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+        }
+        
+        .nav a:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .nav a.active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.7em;
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .page-content {
+            line-height: 1.6;
+            color: #555;
+            font-size: 18px;
+        }
+        
+        .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .property-card {
+            background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .property-card:hover {
+            transform: translateY(-8px);
+        }
+        
+        .widget-info {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #28a745;
+            color: #155724;
+        }
+        
+        .search-section {
+            background: rgba(162, 155, 254, 0.1);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        
+        .search-input {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            width: 60%;
+            max-width: 400px;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        
+        .search-btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+        
+        .search-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="site-header">
+            <h1>🏠 PropertyHub</h1>
+            <p>Find Your Perfect Home Today</p>
+            <div class="widget-info">
+                <strong>Website:</strong> PropertyHub Real Estate Platform<br>
+                <strong>Widget ID:</strong> 7c220169-6103-46d9-a0ea-3a1e899128d1<br>
+                <strong>URL:</strong> localhost:3001/realestate-site.html
+            </div>
+        </div>
+        
+        <nav class="nav">
+            <ul>
+                <li><a href="realestate-site.html" class="active" onclick="trackEvent('navigation_click', 'home')">Home</a></li>
+                <li><a href="realestate-buy.html" onclick="trackEvent('navigation_click', 'buy')">Buy</a></li>
+                <li><a href="realestate-rent.html" onclick="trackEvent('navigation_click', 'rent')">Rent</a></li>
+                <li><a href="realestate-sell.html" onclick="trackEvent('navigation_click', 'sell')">Sell</a></li>
+                <li><a href="realestate-agents.html" onclick="trackEvent('navigation_click', 'agents')">Agents</a></li>
+                <li><a href="realestate-mortgage.html" onclick="trackEvent('navigation_click', 'mortgage')">Mortgage</a></li>
+                <li><a href="realestate-contact.html" onclick="trackEvent('navigation_click', 'contact')">Contact</a></li>
+            </ul>
+        </nav>
+        
+        <div class="content">
+            <h1>Discover Your Dream Property</h1>
+            
+            <div class="search-section">
+                <h3>Search Properties</h3>
+                <input type="text" class="search-input" placeholder="Enter location, property type, or keyword..." onclick="trackEvent('search_focus', 'property_search')">
+                <button class="search-btn" onclick="trackEvent('search_click', 'property_search')">Search Properties</button>
+            </div>
+            
+            <div class="page-content">
+                <p>Whether you're buying, selling, or renting, PropertyHub is your trusted partner in real estate. Explore thousands of verified properties and connect with certified agents.</p>
+                
+                <div class="properties-grid">
+                    <div class="property-card" onclick="trackEvent('property_click', 'luxury_homes')">
+                        <h3>🏰 Luxury Homes</h3>
+                        <p>Premium properties with world-class amenities</p>
+                        <small>Starting from $500K</small>
+                    </div>
+                    <div class="property-card" onclick="trackEvent('property_click', 'apartments')">
+                        <h3>🏢 Apartments</h3>
+                        <p>Modern apartments in prime locations</p>
+                        <small>Starting from $150K</small>
+                    </div>
+                    <div class="property-card" onclick="trackEvent('property_click', 'condos')">
+                        <h3>🏨 Condominiums</h3>
+                        <p>Spacious condos with great community features</p>
+                        <small>Starting from $200K</small>
+                    </div>
+                    <div class="property-card" onclick="trackEvent('property_click', 'commercial')">
+                        <h3>🏪 Commercial</h3>
+                        <p>Office spaces and retail properties</p>
+                        <small>Starting from $300K</small>
+                    </div>
+                    <div class="property-card" onclick="trackEvent('property_click', 'vacation_homes')">
+                        <h3>🏖️ Vacation Homes</h3>
+                        <p>Perfect getaway properties near beaches and mountains</p>
+                        <small>Starting from $250K</small>
+                    </div>
+                    <div class="property-card" onclick="trackEvent('property_click', 'investment')">
+                        <h3>📈 Investment Properties</h3>
+                        <p>High-yield rental properties for investors</p>
+                        <small>ROI up to 12%</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function trackEvent(eventType, eventName) {
+            console.log(`[REAL ESTATE SITE] Tracking event: ${eventType} - ${eventName}`);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🏠 [REAL ESTATE SITE] PropertyHub loaded with widget ID: 7c220169-6103-46d9-a0ea-3a1e899128d1');
+            console.log('🌐 [REAL ESTATE SITE] Website URL:', window.location.href);
+            
+            // Simulate user interactions for testing
+            setTimeout(() => {
+                console.log('[REAL ESTATE SITE] Simulating search interaction...');
+                document.querySelector('.search-input').focus();
+            }, 2000);
+            
+            setTimeout(() => {
+                console.log('[REAL ESTATE SITE] Simulating property browse...');
+                window.scrollTo(0, 300);
+            }, 4000);
+            
+            setTimeout(() => {
+                console.log('[REAL ESTATE SITE] Simulating luxury homes click...');
+                document.querySelector('.property-card').click();
+            }, 6000);
+            
+            setTimeout(() => {
+                console.log('[REAL ESTATE SITE] Simulating search button click...');
+                document.querySelector('.search-btn').click();
+            }, 8000);
+        });
+    </script>
+</body>
+</html>
