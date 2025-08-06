@@ -671,8 +671,6 @@ try {
           messageLength: document.getElementById('message-input')?.value?.length || 0
         });
 
-        // ✅ FIXED: Remove automatic location request on send click
-        // Only request location once during initialization, not on every send click
 
         setTimeout(() => {
           const messageInput = document.getElementById('message-input');

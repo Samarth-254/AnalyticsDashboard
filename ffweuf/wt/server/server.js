@@ -40,6 +40,10 @@ verifySchema();
 app.use(express.json());
 app.use(cors({ origin: '*' }));
 
+app.get('/socket.io.min.js', (req, res) => {
+    res.sendFile(require('path').join(__dirname, '../node_modules/socket.io/client-dist/socket.io.min.js'));
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {

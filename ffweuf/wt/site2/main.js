@@ -7,7 +7,6 @@ try {
       const encodedText = encodeURIComponent(originalText);
       const ch = p.getAttribute("widget-id");
 
-      // ✅ CRITICAL FIX: Store widget_id globally for analytics tracking
       window.WIDGET_ID = ch;
       window.WEBSITE_URL = window.location.origin;
 
