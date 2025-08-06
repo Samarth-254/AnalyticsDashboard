@@ -7,11 +7,9 @@ try {
       const encodedText = encodeURIComponent(originalText);
       const ch = p.getAttribute("widget-id");
 
-      // ✅ CRITICAL FIX: Store widget_id globally for analytics tracking
       window.WIDGET_ID = ch;
       window.WEBSITE_URL = window.location.origin;
 
-      // Your existing API call (unchanged)
       const d = await fetch(
         `https://napi.authkey.io/api/whatsapp_widget?method=retrieve_wg_token&wig_token=${ch}`
       );
@@ -66,7 +64,6 @@ try {
           this.scrollDepth = 0;
           this.previousPage = document.referrer || 'direct';
           
-          // Initialize tracking
           this.setupEventListeners();
         }
 
@@ -84,7 +81,6 @@ try {
         }
 
         setupEventListeners() {
-          // Track scroll depth (keep for analytics)
           window.addEventListener('scroll', this.throttle(() => {
             const scrollPercent = Math.round(
               (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100
@@ -93,7 +89,6 @@ try {
             this.updateActivity();
           }, 1000));
 
-          // Track page unload (keep for page_exit tracking)
           window.addEventListener('beforeunload', () => {
             this.sendPageView('page_exit');
           });
@@ -126,7 +121,6 @@ try {
         updateActivity() {
           this.lastActivityTime = Date.now();
         }
-
 
         async initialize() {
           try {
@@ -203,27 +197,21 @@ try {
               websiteUrl: window.WEBSITE_URL || window.location.origin,
               widgetId: window.WIDGET_ID,
 
-            // Page info
             url: window.location.href,
             path: window.location.pathname,
             title: document.title,
             referrer: this.previousPage,
 
-            // Session info
             sessionDuration: now - this.sessionStartTime,
             timeOnPage: timeOnPage,
 
-            // Engagement metrics
             scrollDepth: this.scrollDepth,
 
-            // Device & browser info
             device: this.getDeviceInfo(),
             browser: this.getBrowserInfo(),
 
-            // Location data (use stored location if available)
             location: this.currentLocation || null,
 
-            // Additional context
             widgetId: ch,
             isActive: !document.hidden,
             timeSinceLastActivity: now - this.lastActivityTime
@@ -231,7 +219,6 @@ try {
           
           this.sendMessage(message);
           
-          // Reset page-specific counters for new page view
           if (eventType === 'page_enter') {
             this.pageViewStartTime = now;
             this.scrollDepth = 0;
@@ -253,8 +240,6 @@ try {
           
           this.sendMessage(message);
         }
-
-        // sendHeartbeat function removed - data is now transmitted via Socket.IO events only
 
         sendMessage(message) {
           if (this.socket && this.socket.connected) {
@@ -314,7 +299,7 @@ try {
             {
               enableHighAccuracy: true,
               timeout: 15000,
-              maximumAge: 300000 // 5 minutes
+              maximumAge: 300000
             }
           );
         }
@@ -327,291 +312,329 @@ try {
         }
       }
 
-      // Your existing HTML/CSS code (unchanged)
         var nwc = `
-             <style>
-            .authkey-dh{
-            display:none;
-            
-            opacity:0;
-            marigin-bottom:0;
-            }
-            .authkey-ds{
-            display:block;
-            opactiy:1;
-            margin-bottom:20px;
-            }
-        .authkey-whatsappBtn {
-            border-radius: 100%;
-            line-height: 1.32;
-            color: rgb(255, 255, 255);
-            font-size: 0px;
-            background-color: #25d366;
-            border-width: 0px;
-            padding: 0px;
-            height: fit-content;
-            width: fit-content;
-            cursor: pointer;
-            position: relative;
-            float:${ndn.wig_position};
-        }
-        .authkey-whatsappIcon{
-            fill: white;
-            width: 3.125rem;
-            height: 3.125rem;
-            padding: 0.4375rem;
-        }
-        .authkey-whatsappLive {
-            background-color: rgb(255, 0, 0);
-            position: absolute;
-            z-index: 1;
-            border-radius: 50%;
-            display: block !important;
-            height: .6rem;
-            width: .6rem;
-            font-size: .687rem;
-            top: 7px;
-            right: 2px;
-        }
-        .authkey-whatsappHeader {
-            color: rgb(17, 17, 17);
-            display: flex;
-            -webkit-box-align: center;
-            align-items: center;
-            padding: 18px;
-            background: ${ndn.back_color};
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .authkey-whatsappAvataarContainer {
-            position: relative;
-            width: 52px;
-            height: 52px;
-            box-shadow: rgba(17, 17, 17, 0.1) 0px 0px 2px inset;
-            border-radius: 50%;
-            display: block;
-            flex-shrink: 0;
-            overflow: inherit;
-            cursor: pointer;
-        }
-        .authkey-whatsappAvataar {
-            width: 52px;
-            height: 52px;
-            background-color: rgb(210, 210, 210);
-            opacity: 1;
-            border-radius: 50%;
-            overflow: hidden;
-            position: relative;
-            z-index: 1;
-        }
-       
-        .authkey-whatsappAvataarImg {
-            object-fit: cover;
-            display: inline-block !important;
-            position: static !important;
-            margin: 0px !important;
-            padding: 0px !important;
-            max-width: none !important;
-            height: inherit !important;
-            width: inherit !important;
-            visibility: visible !important;
-        }
-        .authkey-whatsappAvataarContainer:before {
-            content: "";
-            bottom: 0px;
-            right: 0px;
-            width: 12px;
-            height: 12px;
-            box-sizing: border-box;
-            position: absolute;
-            z-index: 2;
-            border-radius: 50%;
-            background-color: rgb(74, 213, 4);
-            display: block;
-            border: 2px solid rgb(0, 128, 105);
-        }
-        .authkey-whatsappClientImg:before {
-            content: "";
-            bottom: 0px;
-            right: 0px;
-            width: 12px;
-            height: 12px;
-            box-sizing: border-box;
-            position: absolute;
-            z-index: 2;
-            border-radius: 50%;
-            background-color: rgb(74, 213, 4);
-            display: block;
-            border: 2px solid rgb(0, 128, 105);
-        }
-        .authkey-whatsappWindow {
-        
-            z-index: 2147483647;
-            width: 300px;
-            pointer-events: all;
-            touch-action: auto;
-            
-            transition: opacity 0.3s, margin 0.3s, visibility 0.3s;
-        
-            inset: auto 20px 76px auto;
-        }
-        .authkey-whatsappWindowShadow {
-            border-radius: 16px;
-            overflow: hidden;
-            position: relative;
-            box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 30px 0px;
-        }
-        .authkey-whatsappCloseIcon {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 20px;
-            height: 20px;
-            opacity: 0.4;
-            cursor: pointer;
-            transition: 0.3s;
-            outline: transparent;
-            -webkit-box-pack: center;
-            justify-content: center;
-            -webkit-box-align: center;
-            align-items: center;
-            display: flex !important;
-        }
-        .authkey-whatsappCloseIcon:before, .authkey-whatsappCloseIcon:after {
-            content: "";
-            position: absolute;
-            width: 12px;
-            height: 2px;
-            background-color: rgb(255, 255, 255);
-            display: block;
-            border-radius: 2px;
-        }
-        .authkey-whatsappCloseIcon:before {
-            transform: rotate(45deg);
-        }
-        .authkey-whatsappCloseIcon:after {
-            transform: rotate(-45deg);
-        }
-        .authkey-whatsappHeaderInfo {
-            margin-left: 16px;
-            margin-right: 16px;
-            width: 100%;
-            overflow: hidden;
-        }
-        .authkey-whatsappAvataarName {
-            font-size: 16px;
-            font-weight: 700;
-            line-height: 20px;
-            max-height: 60px;
-            -webkit-line-clamp: 3;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            color: rgb(255, 255, 255);
-            font-family:Arial, Helvetica, sans-serif;
-        }
-        .authkey-whatsappOnline {
-            font-size: 13px;
-            line-height: 18px;
-            margin-top: 4px;
-            color: rgb(255, 255, 255);
-            font-family:Arial, Helvetica, sans-serif;
-        }
-        .authkey-whatsappBottomLayout {
-            background: url(https://static.elfsight.com/apps/all-in-one-chat/patterns/background-whatsapp.jpg) center center / cover no-repeat;
-        }
-        .authkey-whatsappChatbox {
-            position: relative;
-            padding: 10px 15px 8px;
-            overflow: auto;
-            max-height: 382px;
-        }
-        .authkey-whatsappChatLayout {
-            padding: 6px 14px;
-            position: relative;
-            transform-origin: center top;
-            z-index: 2;
-            color: rgb(255, 255, 255);
-            font-size: 15px;
-            line-height: 1.39;
-            max-width: calc(100% - 50px);
-            border-radius: 0px 16px 16px;
-            background-color: rgb(255, 255, 255);
-            opacity: 1;
-            hyphens: auto;
-            box-shadow: rgba(0, 0, 0, 0.15) 0px 1px 0px 0px;
-        }
-        .authkey-whatsappChatMessage {
-            display: flex;
-            align-items: flex-end;
-            color: #000;
-            font-family:Arial, Helvetica, sans-serif;
-        }
-        .authkey-whatsappChatSvg {
-            position: absolute;
-            top: 0px;
-            left: -9px;
-        }
-        .authkey-whatsappChatTime {
-            text-align: right;
-            margin-left: 12px;
-            font-size: 12px;
-            line-height: 14px;
-            opacity: 0.5;
-            color: #000;
-            font-family:Arial, Helvetica, sans-serif;
-        }
-        .authkey-whatsappBtnInline {
-            border-radius: 24px;
-            border-color: rgba(255, 255, 255, 0.1);
-            width: auto;
-            line-height: 1.32;
-            color: rgb(255, 255, 255);
-            font-family: inherit;
-            font-weight: bold;
-            font-size: 16px;
-            background-color: rgb(37, 211, 102);
-            border-width: 0px;
-            padding: 0px;
-            margin: 20px;
-            max-width: 100%;
-            box-shadow: rgba(0, 0, 0, 0.25) 0px 1px 0px 0px;
-            padding: 12px 27px;
-            cursor:pointer;
-        }
-        .authkey-whatsappBottomnext {
-            display: flex;
-            -webkit-box-pack: center;
-            justify-content: center;
-        }
-        .authkey-m-d {
-            position: fixed;
-            bottom: ${ndn.bottom_align}px;
-            ${ndn.wig_position}: ${ndn.side_align}px;
-            Z-index:10000;
-        }
-            .authkey-branding {
+<style>
+.authkey-dh{
+display:none;
+opacity:0;
+marigin-bottom:0;
+}
+.authkey-ds{
+display:block;
+opactiy:1;
+margin-bottom:20px;
+}
+.authkey-whatsappBtn {
+    border-radius: 100%;
+    line-height: 1.32;
+    color: rgb(255, 255, 255);
+    font-size: 0px;
+    background-color: #25d366;
+    border-width: 0px;
+    padding: 0px;
+    height: fit-content;
+    width: fit-content;
+    cursor: pointer;
+    position: relative;
+    float:${ndn.wig_position};
+}
+.authkey-whatsappIcon{
+    fill: white;
+    width: 3.125rem;
+    height: 3.125rem;
+    padding: 0.4375rem;
+}
+.authkey-whatsappLive {
+    background-color: rgb(255, 0, 0);
+    position: absolute;
+    z-index: 1;
+    border-radius: 50%;
+    display: block !important;
+    height: .6rem;
+    width: .6rem;
+    font-size: .687rem;
+    top: 7px;
+    right: 2px;
+}
+.authkey-whatsappHeader {
+    color: rgb(17, 17, 17);
+    display: flex;
+    -webkit-box-align: center;
+    align-items: center;
+    padding: 18px;
+    background: ${ndn.back_color};
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.authkey-whatsappAvataarContainer {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    box-shadow: rgba(17, 17, 17, 0.1) 0px 0px 2px inset;
+    border-radius: 50%;
+    display: block;
+    flex-shrink: 0;
+    overflow: inherit;
+    cursor: pointer;
+}
+.authkey-whatsappAvataar {
+    width: 52px;
+    height: 52px;
+    background-color: rgb(210, 210, 210);
+    opacity: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+}
+
+.authkey-whatsappAvataarImg {
+    object-fit: cover;
+    display: inline-block !important;
+    position: static !important;
+    margin: 0px !important;
+    padding: 0px !important;
+    max-width: none !important;
+    height: inherit !important;
+    width: inherit !important;
+    visibility: visible !important;
+}
+.authkey-whatsappAvataarContainer:before {
+    content: "";
+    bottom: 0px;
+    right: 0px;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    position: absolute;
+    z-index: 2;
+    border-radius: 50%;
+    background-color: rgb(74, 213, 4);
+    display: block;
+    border: 2px solid rgb(0, 128, 105);
+}
+.authkey-whatsappClientImg:before {
+    content: "";
+    bottom: 0px;
+    right: 0px;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    position: absolute;
+    z-index: 2;
+    border-radius: 50%;
+    background-color: rgb(74, 213, 4);
+    display: block;
+    border: 2px solid rgb(0, 128, 105);
+}
+.authkey-whatsappWindow {
+    z-index: 2147483647;
+    width: 300px;
+    pointer-events: all;
+    touch-action: auto;
+    transition: opacity 0.3s, margin 0.3s, visibility 0.3s;
+    inset: auto 20px 76px auto;
+}
+.authkey-whatsappWindowShadow {
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 30px 0px;
+}
+.authkey-whatsappCloseIcon {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
+    opacity: 0.4;
+    cursor: pointer;
+    transition: 0.3s;
+    outline: transparent;
+    -webkit-box-pack: center;
+    justify-content: center;
+    -webkit-box-align: center;
+    align-items: center;
+    display: flex !important;
+}
+.authkey-whatsappCloseIcon:before, .authkey-whatsappCloseIcon:after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 2px;
+    background-color: rgb(255, 255, 255);
+    display: block;
+    border-radius: 2px;
+}
+.authkey-whatsappCloseIcon:before {
+    transform: rotate(45deg);
+}
+.authkey-whatsappCloseIcon:after {
+    transform: rotate(-45deg);
+}
+.authkey-whatsappHeaderInfo {
+    margin-left: 16px;
+    margin-right: 16px;
+    width: 100%;
+    overflow: hidden;
+}
+.authkey-whatsappAvataarName {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 20px;
+    max-height: 60px;
+    -webkit-line-clamp: 3;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: rgb(255, 255, 255);
+    font-family:Arial, Helvetica, sans-serif;
+}
+.authkey-whatsappOnline {
+    font-size: 13px;
+    line-height: 18px;
+    margin-top: 4px;
+    color: rgb(255, 255, 255);
+    font-family:Arial, Helvetica, sans-serif;
+}
+.authkey-whatsappBottomLayout {
+    background: url(https://static.elfsight.com/apps/all-in-one-chat/patterns/background-whatsapp.jpg) center center / cover no-repeat;
+}
+.authkey-whatsappChatbox {
+    position: relative;
+    padding: 10px 15px 8px;
+    overflow: auto;
+    max-height: 382px;
+}
+.authkey-whatsappChatLayout {
+    padding: 6px 14px;
+    position: relative;
+    transform-origin: center top;
+    z-index: 2;
+    color: rgb(255, 255, 255);
+    font-size: 15px;
+    line-height: 1.39;
+    max-width: calc(100% - 50px);
+    border-radius: 0px 16px 16px;
+    background-color: rgb(255, 255, 255);
+    opacity: 1;
+    hyphens: auto;
+    box-shadow: rgba(0, 0, 0, 0.15) 0px 1px 0px 0px;
+}
+.authkey-whatsappChatMessage {
+    display: flex;
+    align-items: flex-end;
+    color: #000;
+    font-family:Arial, Helvetica, sans-serif;
+}
+.authkey-whatsappChatSvg {
+    position: absolute;
+    top: 0px;
+    left: -9px;
+}
+.authkey-whatsappChatTime {
+    text-align: right;
+    margin-left: 12px;
+    font-size: 12px;
+    line-height: 14px;
+    opacity: 0.5;
+    color: #000;
+    font-family:Arial, Helvetica, sans-serif;
+}
+.authkey-whatsappBtnInline {
+    border-radius: 24px;
+    border-color: rgba(255, 255, 255, 0.1);
+    width: auto;
+    line-height: 1.32;
+    color: rgb(255, 255, 255);
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 16px;
+    background-color: rgb(37, 211, 102);
+    border-width: 0px;
+    padding: 0px;
+    margin: 20px;
+    max-width: 100%;
+    box-shadow: rgba(0, 0, 0, 0.25) 0px 1px 0px 0px;
+    padding: 12px 27px;
+    cursor:pointer;
+}
+.authkey-whatsappBottomnext {
+    display: flex;
+    -webkit-box-pack: center;
+    justify-content: center;
+}
+.authkey-m-d {
+    position: fixed;
+    bottom: ${ndn.bottom_align}px;
+    ${ndn.wig_position}: ${ndn.side_align}px;
+    Z-index:10000;
+}
+.authkey-branding {
   display: flex;
   justify-content: center;
   align-items: center;
   background-color: #ffffff;
   margin: 0;
-  p{
+}
+.authkey-branding p{
     font-size: 10px;
     margin-top: 4px;
     margin-bottom: 4px;
     margin-left: 1%;
     margin-right: 1%;
-  }
-  img{
+}
+.authkey-branding img{
     width: 0.8em;
-  }
-  a{
+}
+.authkey-branding a{
     font-size: 10px;
     text-decoration: none;
-  }
 }
 
-    </style>
+#message-input {
+    width: 100% !important;
+    height: 44px !important;
+    padding: 10px 54px 10px 15px !important;
+    border: 1px solid #e1e1e1 !important;
+    font-size: 15px !important;
+    background-color: #f7f7f7 !important;
+    resize: none !important;
+    outline: none !important;
+    color: #333 !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+    border-radius: 22px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    line-height: 24px !important;
+}
+
+#send-button {
+    background-color: #25d366 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 40px !important;
+    height: 40px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    cursor: pointer !important;
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    transition: background-color 0.3s ease !important;
+}
+
+#send-button span {
+    font-size: 18px !important;
+    color: white !important;
+    font-weight: bold !important;
+    line-height: 0 !important;
+}
+
+</style>
+
     <div class="authkey-m-d">
     <div id="authkey-tgl" class="authkey-whatsappWindow ">
         <div class="authkey-whatsappWindowShadow">
@@ -642,42 +665,33 @@ try {
                             ${ft()}
                         </div>
                     </div>
-                    <div style="display: flex-direction: column;  position: relative; background-color: transparent; padding: 10px;">
- <div style="display: flex; margin-top: 15px;  flex-direction: column; position: relative; background-color: transparent; overflow-x: hidden;">
-  <!-- Message Input -->
+                    <div style="display: flex-direction: column; position: relative; background-color: transparent; padding: 12px;">
+ <div style="display: flex; margin-top: 10px; flex-direction: column; position: relative; background-color: transparent; overflow-x: hidden;">
   <textarea
     id="message-input"
-    placeholder="Type your text here..."
-    style="width: 100%; height: 30px; padding: 12px; border: 1px solid #e1e1e1; font-size: 15px; background-color: #f7f7f7; resize: none; outline: none; color: #333; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; padding-right: 50px; border-radius: 25px;" 
+    placeholder="Type your text..."
+    style="width: 100%; height: 60px; padding: 12px 60px 12px 15px; border: 1px solid #e1e1e1; font-size: 17px; background-color: #f7f7f7; resize: none; outline: none; color: #333; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; border-radius: 25px; box-sizing: border-box;" 
   ></textarea>
 
-  <!-- Send Button -->
   <button
     id="send-button"
-    style="background-color: #25d366; border: none; border-radius: 50%; width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; cursor: pointer; position: absolute; right: 0; top: 50%; transform: translateY(-50%); transition: background-color 0.3s ease;"
+    style="background-color: #25d366; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; cursor: pointer; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); transition: background-color 0.3s ease;"
   >
     <span
-      style="font-size: 20px; color: white;  font-weight: bold; line-height: 0;"
+      style="font-size: 18px; color: white; font-weight: bold; line-height: 0;"
     >➤</span>
   </button>
 </div>
-
 
 </div>
 
                 </div>
             </div>
-              <div
-      id="whatsapp-container"
-      style="width: 100%; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); padding: 16px; display: flex; flex-direction: column; font-family: 'Roboto', sans-serif;"
-    >
-     
-    </div>
             <div class="authkey-branding">
               <img
                 draggable="false"
                 alt="âš¡"
-                src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0ZGQUMzMyIgZD0iTTMyLjkzOCAxNS42NTFDMzIuNzkyIDE1LjI2IDMyLjQxOCAxNSAzMiAxNUgxOS45MjVMMjYuODkgMS40NThjLjIxOS0uNDI2LjEwNi0uOTQ3LS4yNzEtMS4yNDNDMjYuNDM3LjA3MSAyNi4yMTggMCAyNiAwYy0uMjMzIDAtLjQ2Ni4wODItLjY1My4yNDNMMTggNi41ODggMy4zNDcgMTkuMjQzYy0uMzE2LjI3My0uNDMuNzE0LS4yODQgMS4xMDVTMy41ODIgMjEgNCAyMWgxMi4wNzVMOS4xMSAzNC41NDJjLS4yMTkuNDI2LS4xMDYuOTQ3LjI3MSAxLjI0My4xODIuMTQ0LjQwMS4yMTUuNjE5LjIxNS4yMzMgMCAuNDY2LS4wODIuNjUzLS4yNDNMMTggMjkuNDEybDE0LjY1My0xMi42NTVjLjMxNy0uMjczLjQzLS43MTQuMjg1LTEuMTA2eiIvPjwvc3ZnPg=="
+                src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0ZGQUMzMyIgZD0iTTMyLjkzOCAxNS42NTFDMTI3OTIgMTUuMjYgMzIuNDE4IDE1IDMyIDE1SDE5LjkyNUwyNi44OSAxLjQ1OGMuMjE5LS40MjYuMTA2LS45NDctLjI3MS0xLjI0M0MyNi40MzcuMDcxIDI2LjIxOCAwIDI2IDBjLS4yMzMgMC0uNDY2LjA4Mi0uNjUzLjI0M0wxOCA2LjU4OCAzLjM0NyAxOS4yNDNjLS4zMTYuMjczLS40My43MTQtLjI4NCAxLjEwNVMzLjU4MiAyMSA0IDIxaDEyLjA3NUw5LjExIDM0LjU0MmMtLjIxOS40MjYtLjEwNi45NDcuMjcxIDEuMjQzLjE4Mi4xNDQuNDAxLjIxNS42MTkuMjE1LjIzMyAwIC40NjYtLjA4Mi42NTMtLjI0M0wxOCAyOS40MTJsMTQuNjUzLTEyLjY1NWMuMzE3LS4yNzMuNDMtLjcxNC4yODUtMS4xMDZ6Ii8+PC9zdmc+"
                 
               />
               <p>by   </p>
@@ -697,7 +711,6 @@ try {
     </div>
 `;
       
-      // Create widget container
       const cw = document.createElement("div");
       cw.id = "authkey-wp-widget-container";
       document.body.appendChild(cw);
@@ -708,13 +721,9 @@ try {
 
       function handleSendClick() {
 
-        // Track the interaction
         window.analyticsTracker.sendEvent('whatsapp_send_click', {
           messageLength: document.getElementById('message-input')?.value?.length || 0
         });
-
-        // ✅ FIXED: Remove automatic location request on send click
-        // Only request location once during initialization, not on every send click
 
         setTimeout(() => {
           const messageInput = document.getElementById('message-input');
@@ -723,7 +732,6 @@ try {
         }, 1000);
       }
 
-      // Your original event listeners with analytics enhancement
       const wtbtn = document.getElementById("authkey-wt-btn");
       const td = document.getElementById("authkey-tgl");
       const cbtn = document.getElementById("authkey-cbtn");
@@ -767,7 +775,6 @@ try {
         }
       });
 
-      // Attach enhanced send button
       setTimeout(() => {
         const sendButton = document.getElementById('send-button');
         if (sendButton) {
