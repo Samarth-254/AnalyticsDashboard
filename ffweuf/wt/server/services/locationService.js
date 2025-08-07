@@ -1,4 +1,4 @@
-const { pool } = require('../config/database');
+const { getDB } = require('../config/database');
 const { 
     activeUsers,
     LOCATIONIQ_TOKEN,
@@ -220,30 +220,39 @@ function updateUserLocation(userId, addressData, websiteUrl, widgetId) {
 }
 
 async function storeToDatabaseAsync(userId, timestamp, latitude, longitude, addressData, accuracy, altitude, speed, userAgent, url, websiteUrl, widgetId) {
-    let connection;
     try {
-        connection = await pool.getConnection();
-        await connection.execute(`
-            INSERT INTO location_stats (
-                user_id, timestamp, latitude, longitude, city, country, region,
-                state, postcode, road, suburb, county, display_name, country_code, accuracy,
-                altitude, speed, user_agent, url, website_url, widget_id
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-            userId, timestamp, latitude, longitude,
-            addressData.city, addressData.country, addressData.region,
-            addressData.state, addressData.postcode, addressData.road,
-            addressData.suburb, addressData.county, addressData.display_name,
-            addressData.country_code, accuracy, altitude, speed,
-            userAgent, url, websiteUrl, widgetId
-        ]);
-        
-        
+        const db = getDB();
+        const locationCollection = db.collection('location_stats');
+
+        const locationDocument = {
+            user_id: userId,
+            timestamp: timestamp,
+            latitude: latitude,
+            longitude: longitude,
+            city: addressData.city,
+            country: addressData.country,
+            region: addressData.region,
+            state: addressData.state,
+            postcode: addressData.postcode,
+            road: addressData.road,
+            suburb: addressData.suburb,
+            county: addressData.county,
+            display_name: addressData.display_name,
+            country_code: addressData.country_code,
+            accuracy: accuracy,
+            altitude: altitude,
+            speed: speed,
+            user_agent: userAgent,
+            url: url,
+            website_url: websiteUrl,
+            widget_id: widgetId,
+            created_at: new Date()
+        };
+
+        await locationCollection.insertOne(locationDocument);
+
     } catch (error) {
         console.error('❌ Database storage error:', error);
-    } finally {
-        if (connection) connection.release();
     }
 }
 

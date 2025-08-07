@@ -1,4 +1,4 @@
-const { pool } = require('../config/database');
+const { getDB } = require('../config/database');
 const { 
     activeUsers, 
     activeSessions, 
@@ -146,12 +146,9 @@ function getRealTimeAnalytics() {
 
     // Convert page-specific interactions to final format with website/widget info
     const pageSpecificInteractions = Array.from(pageInteractionsMap.values()).map(interaction => {
-        let count = interaction.count;
-        // ✅ FIXED: Divide page_enter and page_exit counts by 2 to fix double counting
-        if (interaction.event_type === 'page_enter' || interaction.event_type === 'page_exit') {
-            count = Math.round(count / 2);
-        }
-        
+        // ✅ FIXED: Use actual count without division - MongoDB aggregation is accurate
+        const count = interaction.count;
+
         return {
             event_type: interaction.event_type,
             path: interaction.path,
@@ -165,12 +162,9 @@ function getRealTimeAnalytics() {
     
     // Convert combined interactions to final format with website/widget info
     const combinedInteractions = Array.from(combinedInteractionsMap.values()).map(interaction => {
-        let count = interaction.count;
-        // ✅ FIXED: Divide page_enter and page_exit counts by 2 to fix double counting
-        if (interaction.event_type === 'page_enter' || interaction.event_type === 'page_exit') {
-            count = Math.round(count / 2);
-        }
-        
+        // ✅ FIXED: Use actual count without division - MongoDB aggregation is accurate
+        const count = interaction.count;
+
         return {
             event_type: interaction.event_type,
             path: null, // No specific path for combined view
@@ -181,9 +175,48 @@ function getRealTimeAnalytics() {
             unique_users: interaction.unique_users.size
         };
     }).sort((a, b) => b.count - a.count);
-    
-    // ✅ Use combined interactions as the main topEvents, and page-specific for filtering
-    const interactions = combinedInteractions;
+
+    // ✅ NEW: Create truly aggregated interactions by event_type for "All Websites" view
+    // This aggregates across all websites/widgets for each event type
+    const fullyAggregatedInteractions = new Map();
+
+    // Build aggregated map from the original combinedInteractionsMap to preserve user sets
+    combinedInteractionsMap.forEach((interaction, key) => {
+        const eventType = interaction.event_type;
+
+        if (!fullyAggregatedInteractions.has(eventType)) {
+            fullyAggregatedInteractions.set(eventType, {
+                event_type: eventType,
+                path: null,
+                page_path: null,
+                websiteUrl: 'all',
+                widgetId: 'all',
+                count: 0,
+                unique_users: new Set()
+            });
+        }
+
+        const aggregated = fullyAggregatedInteractions.get(eventType);
+        aggregated.count += interaction.count;
+        // Merge user sets to get true unique count across all websites
+        interaction.unique_users.forEach(userId => aggregated.unique_users.add(userId));
+    });
+
+    // Convert to final format
+    const fullyAggregatedArray = Array.from(fullyAggregatedInteractions.values()).map(interaction => ({
+        event_type: interaction.event_type,
+        path: null,
+        page_path: null,
+        websiteUrl: 'all',
+        widgetId: 'all',
+        count: interaction.count,
+        unique_users: interaction.unique_users.size
+    })).sort((a, b) => b.count - a.count);
+
+    // ✅ Use appropriate interactions based on context
+    // For frontend "All Websites" aggregation, provide fully aggregated data
+    // For specific website filtering, use website-specific data
+    const interactions = fullyAggregatedArray;
     
     if (interactions.length > 0) {
     }
@@ -238,10 +271,13 @@ function getRealTimeAnalytics() {
             total_events: todayTotalEvents
         },
         
-        // Top events (interactions) - combined view for all interactions
-        topEvents: interactions,
-        
-        // Page-specific interactions for filtering
+        // Top events (interactions) - fully aggregated across all websites
+        topEvents: fullyAggregatedArray,
+
+        // Website-specific interactions for website filtering
+        topEventsByWebsite: combinedInteractions,
+
+        // Page-specific interactions for page filtering
         pageSpecificInteractions: pageSpecificInteractions,
         
         // Page performance 
@@ -249,47 +285,44 @@ function getRealTimeAnalytics() {
     };
 }
 
-// ✅ SIMPLIFIED: Store analytics events to database
+// ✅ SIMPLIFIED: Store analytics events to database (excluding specified fields)
 async function storeAnalyticsEvent(data) {
-    let connection;
     try {
-        connection = await pool.getConnection();
-        
-        await connection.execute(`
-            INSERT INTO analytics_events (
-                user_id, event_type, timestamp, url, path, title,
-                device_info, browser_info, location_data, event_data,
-                referrer, is_active, website_url, widget_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-            data.userId || null,
-            data.eventType || null,
-            data.timestamp || Date.now(),
-            data.url || null,
-            data.path || null,
-            data.title || null,
-            JSON.stringify(data.device || {}),
-            JSON.stringify(data.browser || {}),
-            JSON.stringify(data.location || {}),
-            JSON.stringify(data.eventData || {}),
-            data.referrer || null,
-            data.isActive || false,
-            data.websiteUrl || null,
-            data.widgetId || null
-        ]);
-        
+        const db = getDB();
+        const analyticsCollection = db.collection('analytics_events');
+
+        const eventDocument = {
+            user_id: data.userId || null,
+            event_type: data.eventType || null,
+            timestamp: data.timestamp || Date.now(),
+            url: data.url || null,
+            path: data.path || null,
+            title: data.title || null,
+            device_info: data.device || {},
+            browser_info: data.browser || {},
+            location_data: data.location || {},
+            event_data: data.eventData || {},
+            referrer: data.referrer || null,
+            is_active: data.isActive || false,
+            website_url: data.websiteUrl || null,
+            widget_id: data.widgetId || null,
+            created_at: new Date(),
+            session_id: data.sessionId || null
+            // Note: Excluded fields (session_duration, time_on_page, scroll_depth, click_count, keystrokes) are not included
+        };
+
+        await analyticsCollection.insertOne(eventDocument);
+
     } catch (error) {
         console.error('❌ [ANALYTICS] Database storage error:', error);
-    } finally {
-        if (connection) connection.release();
     }
 }
 
 async function getWidgetAnalyticsHistory(dateInput, filterWebsiteUrl = null, filterWidgetId = null) {
-    let connection;
     try {
-        connection = await pool.getConnection();
-        
+        const db = getDB();
+        const analyticsCollection = db.collection('analytics_events');
+
         // Parse the input date
         let dateOnly;
         if (dateInput.includes('T')) {
@@ -297,135 +330,243 @@ async function getWidgetAnalyticsHistory(dateInput, filterWebsiteUrl = null, fil
         } else {
             dateOnly = dateInput;
         }
-        
+
         // Validate date format
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         if (!dateRegex.test(dateOnly)) {
             throw new Error(`Invalid date format: ${dateInput}. Expected YYYY-MM-DD`);
         }
-        
+
         // Create timestamps for the specific date
         const startOfDay = new Date(`${dateOnly}T00:00:00.000Z`);
         const endOfDay = new Date(`${dateOnly}T23:59:59.999Z`);
         const startTimestamp = startOfDay.getTime();
         const endTimestamp = endOfDay.getTime();
 
-        // ✅ NEW: Build WHERE clause for website filtering
-        let whereClause = 'timestamp >= ? AND timestamp <= ?';
-        let queryParams = [startTimestamp, endTimestamp];
-        
+        // Build match condition for filtering
+        let matchCondition = {
+            timestamp: { $gte: startTimestamp, $lte: endTimestamp }
+        };
+
         if (filterWebsiteUrl && filterWebsiteUrl !== 'all') {
-            whereClause += ' AND website_url = ?';
-            queryParams.push(filterWebsiteUrl);
+            matchCondition.website_url = filterWebsiteUrl;
         }
-        
+
         if (filterWidgetId && filterWidgetId !== 'all') {
-            whereClause += ' AND widget_id = ?';
-            queryParams.push(filterWidgetId);
+            matchCondition.widget_id = filterWidgetId;
         }
-        const [summary] = await connection.execute(`
-            SELECT 
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(*) as total_events
-            FROM analytics_events
-            WHERE ${whereClause}
-        `, queryParams);
 
-        // 2. Get event type breakdown (interactions) with filtering
-        const [eventTypes] = await connection.execute(`
-            SELECT 
-                event_type,
-                path,
-                COALESCE(website_url, 'unknown') as websiteUrl,
-                COALESCE(widget_id, 'unknown') as widgetId,
-                COUNT(*) as event_count,
-                COUNT(DISTINCT user_id) as unique_users
-            FROM analytics_events
-            WHERE ${whereClause}
-            GROUP BY event_type, path, website_url, widget_id
-            ORDER BY event_count DESC
-        `, queryParams);
-
-        // 3. Get top pages with filtering and website info
-        const [topPages] = await connection.execute(`
-            SELECT 
-                path,
-                title,
-                COALESCE(website_url, 'unknown') as websiteUrl,
-                COALESCE(widget_id, 'unknown') as widgetId,
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(*) as page_views
-            FROM analytics_events
-            WHERE ${whereClause}
-              AND (event_type = 'page_view' OR event_type = 'page_enter')
-            GROUP BY path, title, website_url, widget_id
-            ORDER BY page_views DESC
-            LIMIT 10
-        `, queryParams);
-
-        // 4. Get website and widget breakdown (always show all for context)
-        const [widgetBreakdown] = await connection.execute(`
-            SELECT 
-                COALESCE(website_url, 'unknown') as website_url,
-                COALESCE(widget_id, 'unknown') as widget_id,
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(*) as total_events
-            FROM analytics_events
-            WHERE timestamp >= ? AND timestamp <= ?
-            GROUP BY website_url, widget_id
-            ORDER BY unique_users DESC
-        `, [startTimestamp, endTimestamp]);
-
-        // ✅ NEW: Create separate combined and page-specific events for frontend compatibility
-        const combinedEvents = [];
-        const pageSpecificEvents = [];
-        
-        // Group events by type for combined view
-        const eventTypeGroups = {};
-        eventTypes.forEach(event => {
-            if (!eventTypeGroups[event.event_type]) {
-                eventTypeGroups[event.event_type] = {
-                    event_type: event.event_type,
-                    event_count: 0,
-                    unique_users: new Set()
-                };
+        // Get summary
+        const summaryAgg = await analyticsCollection.aggregate([
+            { $match: matchCondition },
+            {
+                $group: {
+                    _id: null,
+                    unique_users: { $addToSet: "$user_id" },
+                    total_events: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    unique_users: { $size: "$unique_users" },
+                    total_events: 1
+                }
             }
-            eventTypeGroups[event.event_type].event_count += event.event_count;
-            // Add unique users (assuming user_id is unique per event type)
-            eventTypeGroups[event.event_type].unique_users.add(event.unique_users);
-        });
-        
-        // Convert to final format
-        Object.values(eventTypeGroups).forEach(group => {
-            combinedEvents.push({
-                event_type: group.event_type,
-                event_count: group.event_count,
-                unique_users: group.unique_users.size,
-                websiteUrl: filterWebsiteUrl || 'all',
-                widgetId: filterWidgetId || 'all'
+        ]).toArray();
+
+        // Get event type breakdown (interactions) with filtering - detailed by page/website
+        const eventTypesAgg = await analyticsCollection.aggregate([
+            { $match: matchCondition },
+            {
+                $group: {
+                    _id: {
+                        event_type: "$event_type",
+                        path: "$path",
+                        websiteUrl: { $ifNull: ["$website_url", "unknown"] },
+                        widgetId: { $ifNull: ["$widget_id", "unknown"] }
+                    },
+                    event_count: { $sum: 1 },
+                    unique_users: { $addToSet: "$user_id" }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    event_type: "$_id.event_type",
+                    path: "$_id.path",
+                    websiteUrl: "$_id.websiteUrl",
+                    widgetId: "$_id.widgetId",
+                    event_count: 1,
+                    unique_users: { $size: "$unique_users" }
+                }
+            },
+            { $sort: { event_count: -1 } }
+        ]).toArray();
+
+        // ✅ NEW: Get fully aggregated interactions by event_type only (for "All Websites" view)
+        const fullyAggregatedAgg = await analyticsCollection.aggregate([
+            { $match: matchCondition },
+            {
+                $group: {
+                    _id: "$event_type",
+                    event_count: { $sum: 1 },
+                    unique_users: { $addToSet: "$user_id" }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    event_type: "$_id",
+                    event_count: 1,
+                    unique_users: { $size: "$unique_users" }
+                }
+            },
+            { $sort: { event_count: -1 } }
+        ]).toArray();
+
+        // ✅ NEW: Get website-specific aggregated interactions (for specific website filtering)
+        const websiteAggregatedAgg = await analyticsCollection.aggregate([
+            { $match: matchCondition },
+            {
+                $group: {
+                    _id: {
+                        event_type: "$event_type",
+                        websiteUrl: { $ifNull: ["$website_url", "unknown"] },
+                        widgetId: { $ifNull: ["$widget_id", "unknown"] }
+                    },
+                    event_count: { $sum: 1 },
+                    unique_users: { $addToSet: "$user_id" }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    event_type: "$_id.event_type",
+                    websiteUrl: "$_id.websiteUrl",
+                    widgetId: "$_id.widgetId",
+                    event_count: 1,
+                    unique_users: { $size: "$unique_users" }
+                }
+            },
+            { $sort: { event_count: -1 } }
+        ]).toArray();
+
+        // Get top pages with filtering and website info
+        const topPagesAgg = await analyticsCollection.aggregate([
+            {
+                $match: {
+                    ...matchCondition,
+                    event_type: { $in: ["page_view", "page_enter"] }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        path: "$path",
+                        title: "$title",
+                        websiteUrl: { $ifNull: ["$website_url", "unknown"] },
+                        widgetId: { $ifNull: ["$widget_id", "unknown"] }
+                    },
+                    unique_users: { $addToSet: "$user_id" },
+                    page_views: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    path: "$_id.path",
+                    title: "$_id.title",
+                    websiteUrl: "$_id.websiteUrl",
+                    widgetId: "$_id.widgetId",
+                    unique_users: { $size: "$unique_users" },
+                    page_views: 1
+                }
+            },
+            { $sort: { page_views: -1 } },
+            { $limit: 10 }
+        ]).toArray();
+
+        // Get website and widget breakdown (always show all for context)
+        const widgetBreakdownAgg = await analyticsCollection.aggregate([
+            {
+                $match: {
+                    timestamp: { $gte: startTimestamp, $lte: endTimestamp }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        website_url: { $ifNull: ["$website_url", "unknown"] },
+                        widget_id: { $ifNull: ["$widget_id", "unknown"] }
+                    },
+                    unique_users: { $addToSet: "$user_id" },
+                    total_events: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    website_url: "$_id.website_url",
+                    widget_id: "$_id.widget_id",
+                    unique_users: { $size: "$unique_users" },
+                    total_events: 1
+                }
+            },
+            { $sort: { unique_users: -1 } }
+        ]).toArray();
+
+        // ✅ NEW: Use properly aggregated data from MongoDB
+        const pageSpecificEvents = [];
+
+        // Convert fully aggregated data to the format expected by frontend
+        const fullyAggregatedEvents = fullyAggregatedAgg.map(event => ({
+            event_type: event.event_type,
+            event_count: event.event_count,
+            unique_users: event.unique_users,
+            websiteUrl: 'all',
+            widgetId: 'all',
+            path: null,
+            page_path: null
+        }));
+
+        // Convert website-specific aggregated data to the format expected by frontend
+        const websiteSpecificEvents = websiteAggregatedAgg.map(event => ({
+            event_type: event.event_type,
+            event_count: event.event_count,
+            unique_users: event.unique_users,
+            websiteUrl: event.websiteUrl,
+            widgetId: event.widgetId,
+            path: null,
+            page_path: null
+        }));
+
+        // Page-specific events for filtering (only include events with valid paths)
+        eventTypesAgg
+            .filter(event => event.path && event.path !== null && event.path !== "Unknown")
+            .forEach(event => {
+                pageSpecificEvents.push({
+                    event_type: event.event_type,
+                    page_path: event.path,
+                    event_count: event.event_count,
+                    unique_users: event.unique_users,
+                    websiteUrl: event.websiteUrl,
+                    widgetId: event.widgetId
+                });
             });
-        });
-        
-        // Page-specific events for filtering
-        eventTypes.forEach(event => {
-            pageSpecificEvents.push({
-                event_type: event.event_type,
-                page_path: event.path,
-                event_count: event.event_count,
-                unique_users: event.unique_users,
-                websiteUrl: event.websiteUrl,
-                widgetId: event.widgetId
-            });
-        });
+
+        const summary = summaryAgg[0] || { unique_users: 0, total_events: 0 };
 
         const result = {
             date: dateOnly,
-            totalUsers: summary[0]?.unique_users || 0,
-            totalEvents: summary[0]?.total_events || 0,
-            topPages: topPages,
-            topEvents: combinedEvents,
+            totalUsers: summary.unique_users,
+            totalEvents: summary.total_events,
+            topPages: topPagesAgg,
+            // ✅ NEW: Provide both fully aggregated and website-specific data
+            topEvents: fullyAggregatedEvents,
+            topEventsByWebsite: websiteSpecificEvents,
             pageSpecificEvents: pageSpecificEvents,
-            websiteWidgetBreakdown: widgetBreakdown.map(item => ({
+            websiteWidgetBreakdown: widgetBreakdownAgg.map(item => ({
                 websiteUrl: item.website_url,
                 widgetId: item.widget_id,
                 userCount: item.unique_users,
@@ -433,12 +574,12 @@ async function getWidgetAnalyticsHistory(dateInput, filterWebsiteUrl = null, fil
             })),
             // Legacy support
             summary: {
-                unique_users: summary[0]?.unique_users || 0,
-                total_events: summary[0]?.total_events || 0
+                unique_users: summary.unique_users,
+                total_events: summary.total_events
             },
-            event_types: eventTypes,
-            top_pages: topPages,
-            widget_breakdown: widgetBreakdown
+            event_types: eventTypesAgg,
+            top_pages: topPagesAgg,
+            widget_breakdown: widgetBreakdownAgg
         };
 
         return result;
@@ -446,8 +587,6 @@ async function getWidgetAnalyticsHistory(dateInput, filterWebsiteUrl = null, fil
     } catch (error) {
         console.error('❌ Error fetching widget analytics history:', error);
         throw error;
-    } finally {
-        if (connection) connection.release();
     }
 }
 

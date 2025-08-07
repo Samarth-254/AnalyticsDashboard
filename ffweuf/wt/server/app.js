@@ -4,7 +4,7 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const http = require('http');
 
-const { pool } = require('./config/database');
+const { connectToMongoDB } = require('./config/database');
 const { 
     activeUsers, 
     activeSessions, 
@@ -84,8 +84,20 @@ setInterval(() => {
 }, 30 * 60 * 1000);
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Dashboard available at http://localhost:${PORT}/api/dashboard`);
-    console.log(`⚡ Socket.IO server ready`);
-});
+
+// Initialize MongoDB connection and start server
+async function startServer() {
+    try {
+        await connectToMongoDB();
+        server.listen(PORT, () => {
+            console.log(`🚀 Server running on port ${PORT}`);
+            console.log(`📊 Dashboard available at http://localhost:${PORT}/api/dashboard`);
+            console.log(`⚡ Socket.IO server ready`);
+        });
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+startServer();

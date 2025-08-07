@@ -1,54 +1,79 @@
-const { pool } = require('../config/database');
+const { getDB } = require('../config/database');
 const { getRealTimeAnalytics, getWidgetAnalyticsHistory } = require('../services/analyticsService');
 
 async function getAnalyticsOverview(req, res) {
     try {
         const realTimeData = getRealTimeAnalytics();
-        
-        const connection = await pool.getConnection();
-        
+
+        const db = getDB();
+        const analyticsCollection = db.collection('analytics_events');
+
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         const todayTimestamp = todayStart.getTime();
-        
-        const [todayStats] = await connection.execute(`
-            SELECT 
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(*) as total_events
-            FROM analytics_events 
-            WHERE timestamp >= ?
-        `, [todayTimestamp]);
-        
-        const [topEvents] = await connection.execute(`
-            SELECT 
-                event_type,
-                path,
-                COUNT(*) as event_count,
-                COUNT(DISTINCT user_id) as unique_users
-            FROM analytics_events 
-            WHERE timestamp >= ? AND event_type != 'location_update'
-            GROUP BY event_type, path
-            ORDER BY event_count DESC
-            LIMIT 20
-        `, [todayTimestamp]);
-        
-        connection.release();
-        
+
+        // Get today's stats
+        const todayStatsAgg = await analyticsCollection.aggregate([
+            { $match: { timestamp: { $gte: todayTimestamp } } },
+            {
+                $group: {
+                    _id: null,
+                    unique_users: { $addToSet: "$user_id" },
+                    total_events: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    unique_users: { $size: "$unique_users" },
+                    total_events: 1
+                }
+            }
+        ]).toArray();
+
+        // Get top events
+        const topEventsAgg = await analyticsCollection.aggregate([
+            {
+                $match: {
+                    timestamp: { $gte: todayTimestamp },
+                    event_type: { $ne: 'location_update' }
+                }
+            },
+            {
+                $group: {
+                    _id: { event_type: "$event_type", path: "$path" },
+                    event_count: { $sum: 1 },
+                    unique_users: { $addToSet: "$user_id" }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    event_type: "$_id.event_type",
+                    path: "$_id.path",
+                    event_count: 1,
+                    unique_users: { $size: "$unique_users" }
+                }
+            },
+            { $sort: { event_count: -1 } },
+            { $limit: 20 }
+        ]).toArray();
+
         res.json({
             success: true,
             data: {
                 realTime: realTimeData,
-                today: todayStats[0] || {},
-                topEvents: topEvents,
+                today: todayStatsAgg[0] || { unique_users: 0, total_events: 0 },
+                topEvents: topEventsAgg,
                 timestamp: Date.now()
             }
         });
-        
+
     } catch (error) {
         console.error('❌ Analytics overview error:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Internal server error' 
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
         });
     }
 }
@@ -56,44 +81,50 @@ async function getAnalyticsOverview(req, res) {
 async function getAnalyticsPages(req, res) {
     try {
         const { date, limit = 50 } = req.query;
-        const connection = await pool.getConnection();
-        
-        let whereClause = '';
-        const params = [parseInt(limit)];
-        
+        const db = getDB();
+        const analyticsCollection = db.collection('analytics_events');
+
+        let matchCondition = { event_type: 'page_view' };
+
         if (date) {
             const dayStart = new Date(date).getTime();
             const dayEnd = dayStart + (24 * 60 * 60 * 1000);
-            whereClause = 'WHERE timestamp >= ? AND timestamp < ?';
-            params.unshift(dayStart, dayEnd);
+            matchCondition.timestamp = { $gte: dayStart, $lt: dayEnd };
         }
-        
-        const [pageStats] = await connection.execute(`
-            SELECT 
-                path,
-                title,
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(*) as page_views
-            FROM analytics_events 
-            WHERE event_type = 'page_view' ${whereClause.replace('WHERE', 'AND')}
-            GROUP BY path, title
-            ORDER BY unique_users DESC
-            LIMIT ?
-        `, params);
-        
-        connection.release();
-        
+
+        const pageStatsAgg = await analyticsCollection.aggregate([
+            { $match: matchCondition },
+            {
+                $group: {
+                    _id: { path: "$path", title: "$title" },
+                    unique_users: { $addToSet: "$user_id" },
+                    page_views: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    path: "$_id.path",
+                    title: "$_id.title",
+                    unique_users: { $size: "$unique_users" },
+                    page_views: 1
+                }
+            },
+            { $sort: { unique_users: -1 } },
+            { $limit: parseInt(limit) }
+        ]).toArray();
+
         res.json({
             success: true,
-            data: pageStats,
+            data: pageStatsAgg,
             date: date || 'all-time'
         });
-        
+
     } catch (error) {
         console.error('❌ Page analytics error:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Internal server error' 
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
         });
     }
 }
@@ -101,44 +132,50 @@ async function getAnalyticsPages(req, res) {
 async function getAnalyticsBehavior(req, res) {
     try {
         const { date } = req.query;
-        const connection = await pool.getConnection();
-        
-        let whereClause = '';
-        const params = [];
-        
+        const db = getDB();
+        const analyticsCollection = db.collection('analytics_events');
+
+        let matchCondition = {};
+
         if (date) {
             const dayStart = new Date(date).getTime();
             const dayEnd = dayStart + (24 * 60 * 60 * 1000);
-            whereClause = 'WHERE timestamp >= ? AND timestamp < ?';
-            params.push(dayStart, dayEnd);
+            matchCondition.timestamp = { $gte: dayStart, $lt: dayEnd };
         }
-        
-        const [interactionStats] = await connection.execute(`
-            SELECT 
-                event_type,
-                COUNT(*) as count,
-                COUNT(DISTINCT user_id) as unique_users
-            FROM analytics_events 
-            ${whereClause}
-            GROUP BY event_type
-            ORDER BY count DESC
-        `, params);
-        
-        connection.release();
-        
+
+        const interactionStatsAgg = await analyticsCollection.aggregate([
+            { $match: matchCondition },
+            {
+                $group: {
+                    _id: "$event_type",
+                    count: { $sum: 1 },
+                    unique_users: { $addToSet: "$user_id" }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    event_type: "$_id",
+                    count: 1,
+                    unique_users: { $size: "$unique_users" }
+                }
+            },
+            { $sort: { count: -1 } }
+        ]).toArray();
+
         res.json({
             success: true,
             data: {
-                interactions: interactionStats
+                interactions: interactionStatsAgg
             },
             date: date || 'all-time'
         });
-        
+
     } catch (error) {
         console.error('❌ Behavior analytics error:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Internal server error' 
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
         });
     }
 }
@@ -206,60 +243,48 @@ async function getWidgetHistory(req, res) {
 async function getAnalyticsAvailableDates(req, res) {
     try {
         const { websiteUrl, widgetId } = req.query;
-        
-        const connection = await pool.getConnection();
-        
-        let whereClause = 'created_at IS NOT NULL';
-        let queryParams = [];
-        
+
+        const db = getDB();
+        const analyticsCollection = db.collection('analytics_events');
+
+        let matchCondition = { created_at: { $exists: true, $ne: null } };
+
         if (websiteUrl && websiteUrl !== 'all') {
-            whereClause += ' AND website_url = ?';
-            queryParams.push(websiteUrl);
+            matchCondition.website_url = websiteUrl;
         }
-        
+
         if (widgetId && widgetId !== 'all') {
-            whereClause += ' AND widget_id = ?';
-            queryParams.push(widgetId);
+            matchCondition.widget_id = widgetId;
         }
-        
-        // Get raw timestamps and handle timezone in JavaScript
-        const [rows] = await connection.execute(`
-            SELECT 
-                UNIX_TIMESTAMP(created_at) * 1000 as timestamp,
-                COUNT(DISTINCT session_id) as event_count
-            FROM analytics_events 
-            WHERE ${whereClause}
-            GROUP BY DATE(FROM_UNIXTIME(UNIX_TIMESTAMP(created_at)))
-            ORDER BY timestamp DESC
-        `, queryParams);
-        
-        connection.release();
-        
-        const dateGroups = {};
-        
-        rows.forEach(row => {
-            // Create date in UTC to avoid timezone shifts
-            const date = new Date(row.timestamp);
-            const dateKey = date.getUTCFullYear() + '-' + 
-                         String(date.getUTCMonth() + 1).padStart(2, '0') + '-' + 
-                         String(date.getUTCDate()).padStart(2, '0');
-            
-            if (!dateGroups[dateKey]) {
-                dateGroups[dateKey] = row.event_count;
-            }
-        });
-        
-        const dates = Object.keys(dateGroups).map(date => ({
-            date: date,
-            event_count: dateGroups[date]
-        }));
-        
-        
+
+        const datesAgg = await analyticsCollection.aggregate([
+            { $match: matchCondition },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: {
+                            format: "%Y-%m-%d",
+                            date: "$created_at"
+                        }
+                    },
+                    event_count: { $addToSet: "$session_id" }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    date: "$_id",
+                    event_count: { $size: "$event_count" }
+                }
+            },
+            { $sort: { date: -1 } }
+        ]).toArray();
+
         res.json({
             success: true,
-            dates: dates
+            dates: datesAgg
         });
-        
+
     } catch (error) {
         console.error('❌ Error fetching available dates:', error);
         res.status(500).json({
@@ -274,11 +299,11 @@ async function getAnalyticsAvailableDates(req, res) {
 async function postWidgetHistory(req, res) {
     try {
         const { date } = req.body;
-        
+
         if (!date) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Date is required' 
+            return res.status(400).json({
+                success: false,
+                error: 'Date is required'
             });
         }
 
@@ -286,128 +311,201 @@ async function postWidgetHistory(req, res) {
         if (date.includes('T')) {
             dateOnly = date.split('T')[0];
         }
-        
+
         const startOfDay = new Date(`${dateOnly}T00:00:00.000Z`);
         const endOfDay = new Date(`${dateOnly}T23:59:59.999Z`);
-        
-        // Get summary metrics
-        const [summary] = await pool.query(`
-            SELECT 
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(DISTINCT session_id) as unique_sessions,
-                COUNT(*) as total_events,
-                SUM(CASE WHEN event_type = 'page_view' OR event_type = 'page_enter' THEN 1 ELSE 0 END) as page_views,
-                AVG(time_on_page) as avg_time_on_page,
-                AVG(scroll_depth) as avg_scroll_depth
-            FROM analytics_events
-            WHERE created_at >= ? AND created_at <= ?
-        `, [startOfDay, endOfDay]);
-        
-        // Get top pages
-        const [topPages] = await pool.query(`
-            SELECT 
-                COALESCE(path, 'Unknown') as path,
-                COALESCE(title, 'Untitled') as title,
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(*) as page_views,
-                AVG(time_on_page) as avg_time_on_page,
-                AVG(scroll_depth) as avg_scroll_depth
-            FROM analytics_events
-            WHERE (event_type = 'page_view' OR event_type = 'page_enter')
-            AND created_at >= ? AND created_at <= ?
-            GROUP BY path, title
-            ORDER BY page_views DESC
-            LIMIT 10
-        `, [startOfDay, endOfDay]);
-        
+
+        const db = getDB();
+        const analyticsCollection = db.collection('analytics_events');
+
+        // Get summary metrics (excluding the specified fields)
+        const summaryAgg = await analyticsCollection.aggregate([
+            {
+                $match: {
+                    created_at: { $gte: startOfDay, $lte: endOfDay }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    unique_users: { $addToSet: "$user_id" },
+                    unique_sessions: { $addToSet: "$session_id" },
+                    total_events: { $sum: 1 },
+                    page_views: {
+                        $sum: {
+                            $cond: [
+                                { $in: ["$event_type", ["page_view", "page_enter"]] },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    unique_users: { $size: "$unique_users" },
+                    unique_sessions: { $size: "$unique_sessions" },
+                    total_events: 1,
+                    page_views: 1,
+                    avg_time_on_page: 0, // Excluded field
+                    avg_scroll_depth: 0  // Excluded field
+                }
+            }
+        ]).toArray();
+
+        // Get top pages (excluding the specified fields)
+        const topPagesAgg = await analyticsCollection.aggregate([
+            {
+                $match: {
+                    event_type: { $in: ["page_view", "page_enter"] },
+                    created_at: { $gte: startOfDay, $lte: endOfDay }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        path: { $ifNull: ["$path", "Unknown"] },
+                        title: { $ifNull: ["$title", "Untitled"] }
+                    },
+                    unique_users: { $addToSet: "$user_id" },
+                    page_views: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    path: "$_id.path",
+                    title: "$_id.title",
+                    unique_users: { $size: "$unique_users" },
+                    page_views: 1,
+                    avg_time_on_page: 0, // Excluded field
+                    avg_scroll_depth: 0  // Excluded field
+                }
+            },
+            { $sort: { page_views: -1 } },
+            { $limit: 10 }
+        ]).toArray();
+
         // Get event type breakdown
-        const [eventTypes] = await pool.query(`
-            SELECT 
-                event_type,
-                COUNT(*) as event_count,
-                COUNT(DISTINCT user_id) as unique_users
-            FROM analytics_events
-            WHERE created_at >= ? AND created_at <= ?
-            GROUP BY event_type
-            ORDER BY event_count DESC
-        `, [startOfDay, endOfDay]);
-        
-        // ✅ IMPROVED: Get page-specific event breakdown with session-based page association
-        const [pageSpecificEvents] = await pool.query(`
-            SELECT 
-                page_events.page_path,
-                page_events.event_type,
-                COUNT(*) as event_count,
-                COUNT(DISTINCT page_events.user_id) as unique_users
-            FROM (
-                -- Get events with their associated page context
-                SELECT 
-                    e1.user_id,
-                    e1.session_id,
-                    e1.event_type,
-                    e1.created_at,
-                    -- Use the most recent page_enter/page_view event for the same session to determine page context
-                    COALESCE(
-                        (SELECT e2.path 
-                         FROM analytics_events e2 
-                         WHERE e2.user_id = e1.user_id 
-                         AND e2.session_id = e1.session_id
-                         AND e2.event_type IN ('page_enter', 'page_view')
-                         AND e2.created_at <= e1.created_at
-                         ORDER BY e2.created_at DESC 
-                         LIMIT 1),
-                        e1.path,
-                        'Unknown'
-                    ) as page_path
-                FROM analytics_events e1
-                WHERE e1.created_at >= ? AND e1.created_at <= ?
-            ) page_events
-            WHERE page_events.page_path != 'Unknown'
-            GROUP BY page_events.page_path, page_events.event_type
-            ORDER BY event_count DESC
-        `, [startOfDay, endOfDay]);
-        
+        const eventTypesAgg = await analyticsCollection.aggregate([
+            {
+                $match: {
+                    created_at: { $gte: startOfDay, $lte: endOfDay }
+                }
+            },
+            {
+                $group: {
+                    _id: "$event_type",
+                    event_count: { $sum: 1 },
+                    unique_users: { $addToSet: "$user_id" }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    event_type: "$_id",
+                    event_count: 1,
+                    unique_users: { $size: "$unique_users" }
+                }
+            },
+            { $sort: { event_count: -1 } }
+        ]).toArray();
+
+        // Get page-specific event breakdown (with website and widget info)
+        const pageSpecificEventsAgg = await analyticsCollection.aggregate([
+            {
+                $match: {
+                    created_at: { $gte: startOfDay, $lte: endOfDay },
+                    path: { $ne: null, $ne: "Unknown" }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        page_path: { $ifNull: ["$path", "Unknown"] },
+                        event_type: "$event_type",
+                        websiteUrl: { $ifNull: ["$website_url", "unknown"] },
+                        widgetId: { $ifNull: ["$widget_id", "unknown"] }
+                    },
+                    event_count: { $sum: 1 },
+                    unique_users: { $addToSet: "$user_id" }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    page_path: "$_id.page_path",
+                    event_type: "$_id.event_type",
+                    websiteUrl: "$_id.websiteUrl",
+                    widgetId: "$_id.widgetId",
+                    event_count: 1,
+                    unique_users: { $size: "$unique_users" }
+                }
+            },
+            { $sort: { event_count: -1 } }
+        ]).toArray();
+
         // Get website and widget breakdown
-        const [websiteWidgetBreakdown] = await pool.query(`
-            SELECT 
-                COALESCE(website_url, 'Unknown') as website,
-                COALESCE(widget_id, 'default') as widget_id,
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(*) as total_events
-            FROM analytics_events
-            WHERE created_at >= ? AND created_at <= ?
-            GROUP BY website_url, widget_id
-            ORDER BY total_events DESC
-        `, [startOfDay, endOfDay]);
-        
+        const websiteWidgetBreakdownAgg = await analyticsCollection.aggregate([
+            {
+                $match: {
+                    created_at: { $gte: startOfDay, $lte: endOfDay }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        website: { $ifNull: ["$website_url", "Unknown"] },
+                        widget_id: { $ifNull: ["$widget_id", "default"] }
+                    },
+                    unique_users: { $addToSet: "$user_id" },
+                    total_events: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    website: "$_id.website",
+                    widget_id: "$_id.widget_id",
+                    unique_users: { $size: "$unique_users" },
+                    total_events: 1
+                }
+            },
+            { $sort: { total_events: -1 } }
+        ]).toArray();
+
+        const summary = summaryAgg[0] || { unique_users: 0, unique_sessions: 0, total_events: 0, page_views: 0 };
+
         const result = {
             summary: {
-                unique_users: summary[0]?.unique_users || 0,
-                unique_sessions: summary[0]?.unique_sessions || 0,
-                total_events: summary[0]?.total_events || 0,
-                page_views: summary[0]?.page_views || 0,
-                avg_time_on_page: parseFloat(summary[0]?.avg_time_on_page || 0).toFixed(2),
-                avg_scroll_depth: parseFloat(summary[0]?.avg_scroll_depth || 0).toFixed(2)
+                unique_users: summary.unique_users,
+                unique_sessions: summary.unique_sessions,
+                total_events: summary.total_events,
+                page_views: summary.page_views,
+                avg_time_on_page: "0.00", // Excluded field
+                avg_scroll_depth: "0.00"  // Excluded field
             },
-            top_pages: topPages.map(page => ({
+            top_pages: topPagesAgg.map(page => ({
                 ...page,
-                avg_time_on_page: parseFloat(page.avg_time_on_page || 0).toFixed(2),
-                avg_scroll_depth: parseFloat(page.avg_scroll_depth || 0).toFixed(2)
+                avg_time_on_page: "0.00", // Excluded field
+                avg_scroll_depth: "0.00"  // Excluded field
             })),
-            event_types: eventTypes,
-            page_specific_events: pageSpecificEvents, // ✅ NEW: Add page-specific events
-            website_widget_breakdown: websiteWidgetBreakdown,
+            event_types: eventTypesAgg,
+            page_specific_events: pageSpecificEventsAgg,
+            website_widget_breakdown: websiteWidgetBreakdownAgg,
             date: dateOnly
         };
-        
+
         res.json(result);
-        
+
     } catch (error) {
         console.error('❌ Error in widget analytics history API:', error);
-        res.status(500).json({ 
-            success: false, 
+        res.status(500).json({
+            success: false,
             error: 'Failed to fetch widget analytics history',
-            details: error.message 
+            details: error.message
         });
     }
 }

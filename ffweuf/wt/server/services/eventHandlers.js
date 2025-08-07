@@ -47,13 +47,11 @@ async function handleAnalyticsEvent(socket, data) {
     userData.lastSeen = timestamp;
     sessionData.lastActivity = timestamp;
     
-    // ✅ FIXED: Store today's events for history (but exclude location_update and location_error events)
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayTimestamp = todayStart.getTime();
     
     if (timestamp >= todayTimestamp && eventType !== 'location_update' && eventType !== 'location_error') {
-        // ✅ FIXED: Ensure widget events have path information
         let eventPath = data.path;
         if (!eventPath && sessionData && sessionData.pageViews.length > 0 && 
             (eventType === 'widget_open' || eventType === 'widget_close' || eventType === 'whatsapp_send_click')) {
@@ -115,13 +113,12 @@ async function handleAnalyticsEvent(socket, data) {
             break;
 
         case 'location_error':
-            return; // Exit early without storing or broadcasting
+            return; 
 
         default:
             return;
     }
 
-    // ✅ FIXED: Smart broadcasting - only on significant user state changes
     const shouldBroadcast = 
         eventType === 'page_enter' ||       // New page views affect top pages
         eventType === 'page_view' ||        // New page views affect top pages 
@@ -219,25 +216,10 @@ async function handleUserInteraction(data, userData, sessionData) {
     };
     
     sessionData.events.push(interactionEvent);
-    
-    // Also track in today's events for history
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayTimestamp = todayStart.getTime();
-    
-    if (data.timestamp >= todayTimestamp) {
-        const eventKey = `interaction_${eventType}_${userData.userId}_${Date.now()}`;
-        todayEvents.set(eventKey, {
-            userId: userData.userId,
-            eventType: eventType,
-            timestamp: data.timestamp,
-            url: data.url,
-            path: data.path, // This should now have the corrected path
-            eventData: eventData || { path: data.path, title: data.title },
-            websiteUrl: userData.websiteUrl,
-            widgetId: userData.widgetId
-        });
-    }
+
+    // ✅ REMOVED: Duplicate storage in todayEvents - this is already handled by handleAnalyticsEvent
+    // The main handleAnalyticsEvent function stores all events in todayEvents on line 64
+    // Storing here was causing double counting in live mode
     
     // Better logging with appropriate data
     const logData = eventData || { path: path, title: title };

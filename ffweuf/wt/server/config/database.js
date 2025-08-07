@@ -1,14 +1,40 @@
-const mysql = require('mysql2/promise');
+const { MongoClient } = require('mongodb');
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'usertracking',
-    port: process.env.DB_PORT || 3306,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+const uri = process.env.MONGODB_URI || `mongodb://${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 27017}/${process.env.DB_NAME || 'usertracking'}`;
 
-module.exports = { pool };
+let client;
+let db;
+
+async function connectToMongoDB() {
+    try {
+        client = new MongoClient(uri);
+        await client.connect();
+        db = client.db(process.env.DB_NAME || 'usertracking');
+        console.log('✅ Connected to MongoDB');
+        return db;
+    } catch (error) {
+        console.error('❌ MongoDB connection error:', error);
+        throw error;
+    }
+}
+
+function getDB() {
+    if (!db) {
+        throw new Error('Database not initialized. Call connectToMongoDB() first.');
+    }
+    return db;
+}
+
+async function closeConnection() {
+    if (client) {
+        await client.close();
+        console.log('🔌 MongoDB connection closed');
+    }
+}
+
+module.exports = {
+    connectToMongoDB,
+    getDB,
+    closeConnection,
+    pool: { getConnection: () => ({ execute: () => {}, release: () => {} }) }
+};
