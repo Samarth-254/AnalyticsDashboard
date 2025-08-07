@@ -6,7 +6,7 @@ const {
     locationCache,
     pendingRequests
 } = require('../config/constants');
-const { createCompositeKey, broadcastUserCount } = require('../utils/helpers');
+const { createCompositeKey, broadcastUserCount, normalizeCityName } = require('../utils/helpers');
 
 // Use a module-level variable for lastApiCall
 let lastApiCall = 0;
@@ -177,25 +177,31 @@ async function makeLocationIQRequest(latitude, longitude) {
         };
     }
     
+    // Extract raw city name from API response
+    const rawCity = locationResponse.address?.city ||
+                   locationResponse.address?.town ||
+                   locationResponse.address?.village ||
+                   locationResponse.address?.municipality ||
+                   locationResponse.address?.hamlet || 'Unknown';
+
+    // ✅ Normalize city name to handle duplicates like "Delhi" and "New Delhi"
+    const normalizedCity = normalizeCityName(rawCity);
+
     const result = {
         display_name: locationResponse.display_name || 'Unknown location',
         country: locationResponse.address?.country || 'Unknown',
-        city: locationResponse.address?.city || 
-              locationResponse.address?.town || 
-              locationResponse.address?.village || 
-              locationResponse.address?.municipality || 
-              locationResponse.address?.hamlet || 'Unknown',
-        region: locationResponse.address?.region || 
-               locationResponse.address?.state || 
+        city: normalizedCity, // Use normalized city name
+        region: locationResponse.address?.region ||
+               locationResponse.address?.state ||
                locationResponse.address?.province || 'Unknown',
-        state: locationResponse.address?.state || 
-              locationResponse.address?.province || 
+        state: locationResponse.address?.state ||
+              locationResponse.address?.province ||
               locationResponse.address?.region || 'Unknown',
         postcode: locationResponse.address?.postcode || '',
-        road: locationResponse.address?.road || 
+        road: locationResponse.address?.road ||
              locationResponse.address?.street || '',
-        suburb: locationResponse.address?.suburb || 
-               locationResponse.address?.neighbourhood || 
+        suburb: locationResponse.address?.suburb ||
+               locationResponse.address?.neighbourhood ||
                locationResponse.address?.quarter || '',
         county: locationResponse.address?.county || '',
         country_code: locationResponse.address?.country_code || ''
@@ -210,13 +216,44 @@ function updateUserLocation(userId, addressData, websiteUrl, widgetId) {
     const user = activeUsers.get(userCompositeKey);
     if (user) {
         user.country = addressData.country;
-        user.city = addressData.city;
+        user.city = addressData.city; // This is already normalized in makeLocationIQRequest
         activeUsers.set(userCompositeKey, user);
 
         broadcastUserCount();
         const { broadcastDashboardData } = require('./dashboardService');
         broadcastDashboardData();
     }
+}
+
+/**
+ * ✅ Normalize existing users' city names to fix duplicates
+ * This function should be called once to migrate existing data
+ */
+function normalizeExistingUserCities() {
+    let updatedCount = 0;
+
+    activeUsers.forEach((userData, userKey) => {
+        if (userData.city && userData.city !== 'Unknown') {
+            const originalCity = userData.city;
+            const normalizedCity = normalizeCityName(originalCity);
+
+            if (originalCity !== normalizedCity) {
+                userData.city = normalizedCity;
+                activeUsers.set(userKey, userData);
+                updatedCount++;
+                console.log(`🔄 Normalized city: "${originalCity}" → "${normalizedCity}" for user ${userData.userId}`);
+            }
+        }
+    });
+
+    if (updatedCount > 0) {
+        console.log(`✅ Normalized ${updatedCount} user city names`);
+        broadcastUserCount();
+        const { broadcastDashboardData } = require('./dashboardService');
+        broadcastDashboardData();
+    }
+
+    return updatedCount;
 }
 
 async function storeToDatabaseAsync(userId, timestamp, latitude, longitude, addressData, accuracy, altitude, speed, userAgent, url, websiteUrl, widgetId) {
@@ -261,5 +298,6 @@ module.exports = {
     processLocationWithRetry,
     makeLocationIQRequest,
     updateUserLocation,
-    storeToDatabaseAsync
+    storeToDatabaseAsync,
+    normalizeExistingUserCities
 };

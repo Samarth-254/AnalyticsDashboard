@@ -213,7 +213,7 @@ async function getHistoricalData(dateInput, websiteUrl = null, widgetId = null) 
             { $sort: { user_count: -1 } }
         ]).toArray();
 
-        // Get users by city
+        // Get users by city with normalization
         const cityAgg = await locationCollection.aggregate([
             {
                 $match: {
@@ -223,8 +223,33 @@ async function getHistoricalData(dateInput, websiteUrl = null, widgetId = null) 
                 }
             },
             {
+                $addFields: {
+                    normalizedCity: {
+                        $switch: {
+                            branches: [
+                                // Delhi variations
+                                { case: { $in: [{ $toLower: "$city" }, ["new delhi", "delhi", "delhi ncr", "new delhi district", "central delhi", "south delhi", "north delhi", "east delhi", "west delhi"]] }, then: "Delhi" },
+                                // Mumbai variations
+                                { case: { $in: [{ $toLower: "$city" }, ["mumbai", "bombay", "greater mumbai", "mumbai city"]] }, then: "Mumbai" },
+                                // Bangalore variations
+                                { case: { $in: [{ $toLower: "$city" }, ["bangalore", "bengaluru", "bengaluru urban", "bangalore urban"]] }, then: "Bangalore" },
+                                // Chennai variations
+                                { case: { $in: [{ $toLower: "$city" }, ["chennai", "madras", "chennai city"]] }, then: "Chennai" },
+                                // Hyderabad variations
+                                { case: { $in: [{ $toLower: "$city" }, ["hyderabad", "secunderabad", "cyberabad"]] }, then: "Hyderabad" },
+                                // Kolkata variations
+                                { case: { $in: [{ $toLower: "$city" }, ["kolkata", "calcutta", "kolkata city"]] }, then: "Kolkata" },
+                                // Pune variations
+                                { case: { $in: [{ $toLower: "$city" }, ["pune", "poona", "pune city"]] }, then: "Pune" }
+                            ],
+                            default: "$city"
+                        }
+                    }
+                }
+            },
+            {
                 $group: {
-                    _id: { city: "$city", country: "$country" },
+                    _id: { city: "$normalizedCity", country: "$country" },
                     user_count: { $addToSet: "$user_id" }
                 }
             },

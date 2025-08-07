@@ -12,6 +12,7 @@ const {
     pageViews
 } = require('./config/constants');
 const { cleanupDailyData } = require('./utils/helpers');
+const { normalizeExistingUserCities } = require('./services/locationService');
 
 const { handleSocketConnection } = require('./socket/socketHandlers');
 
@@ -89,6 +90,12 @@ const PORT = process.env.PORT || 3001;
 async function startServer() {
     try {
         await connectToMongoDB();
+
+        // ✅ Normalize existing user city names to fix duplicates like "Delhi" and "New Delhi"
+        setTimeout(() => {
+            normalizeExistingUserCities();
+        }, 2000); // Wait 2 seconds for any initial users to connect
+
         server.listen(PORT, () => {
             console.log(`🚀 Server running on port ${PORT}`);
             console.log(`📊 Dashboard available at http://localhost:${PORT}/api/dashboard`);
