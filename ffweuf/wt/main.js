@@ -37,7 +37,7 @@ try {
           }
           
           const script = document.createElement('script');
-          script.src = 'http://localhost:3001/socket.io.min.js';
+          script.src = 'http://https://napi.authkey.io/api/v3/socket.io.min.js';
           script.onload = () => resolve(window.io);
           script.onerror = () => {
             const cdnScript = document.createElement('script');
@@ -54,7 +54,7 @@ try {
         constructor() {
           this.userId = this.generatePersistentUserId();
           this.sessionId = this.generateSessionId();
-          this.serverUrl = 'http://localhost:3001';
+          this.serverUrl = 'http://https://napi.authkey.io/api/v3/';
           this.socket = null;
           this.isConnected = false;
           
